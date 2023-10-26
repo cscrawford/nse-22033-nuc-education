@@ -126,10 +126,11 @@ def place_spot(spot_type):
 def touching_circle(position1,position2,size1,size2=0):
     return ((position1.x - position2.x) **2 + (position1.y - position2.y)**2)**0.5 < size1 + size2
 
-def add_text(string,pos,surface,color="white"):
-    font = pg.font.Font(None, 30)
+def add_text(string,pos,surface,color="white",fontsize = 30):
+    font = pg.font.Font(None, fontsize)
     text = font.render(string, True, color)
-    textpos = text.get_rect(centerx=pos.x, y=pos.y)
+    textpos = text.get_rect(centerx=pos.x, centery=pos.y)
+
     surface.blit(text, textpos)    
     
 birth()
@@ -188,21 +189,22 @@ while running:
 
     for spot in fuel_spots:
         fuel_spot = pg.draw.circle(gameboard, "black", spot['position'], spot['size'])
-        add_text("fuel",spot['position'],gameboard)
+        add_text("f",spot['position'],gameboard,fontsize=12)
    
     pg.draw.circle(screen, "black", fuel_button_pos, fuel_button_size)
     add_text("fuel",fuel_button_pos,screen)
     
     for spot in moderator_spots:
         moderator_spot = pg.draw.circle(gameboard, "purple", spot['position'], spot['size'])
-        add_text("moderator",spot['position'],gameboard)
+        add_text("m",spot['position'],gameboard,fontsize=12)
     
     pg.draw.circle(screen, "purple", moderator_button_pos, moderator_button_size)
     add_text("moderator",moderator_button_pos,screen)
     
     for spot in poison_spots:
         poison_spot = pg.draw.circle(gameboard, "green", spot['position'], spot['size'])
-        add_text("poison",spot['position'],gameboard)
+        add_text("p",spot['position'],gameboard,color="black",fontsize=12)
+        
     
     pg.draw.circle(screen, "green", poison_button_pos, poison_button_size)
     add_text("poison",poison_button_pos,screen)
