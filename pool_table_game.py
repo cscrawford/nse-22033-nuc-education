@@ -6,7 +6,10 @@ import copy
 # pygame setup
 pg.init()# pygame setup
 screen = pg.display.set_mode((1280, 720))
+shield = pg.Surface((1000,600))
+reflector = pg.Surface((950 ,550))
 gameboard = pg.Surface((900, 500))
+start_button = pg.Surface((75,50))
 clock = pg.time.Clock()
 
 # Booleans
@@ -17,6 +20,11 @@ poison_to_place = False
 fuel_cursor_growing = False
 moderator_cursor_growing = False
 poison_cursor_growing = False
+coolant_cursor_growing = False
+
+# colors
+poison_color = "brown"
+coolant_color = "blue"
 
 # numbers
 dt = 0
@@ -28,6 +36,7 @@ neutrons = []
 fuel_spots = []
 moderator_spots = []
 poison_spots = []
+coolant_spots = []
 
 # cursor
 starting_cursor = pg.cursors.Cursor(*pg.cursors.arrow)
@@ -36,19 +45,28 @@ pg.mouse.set_cursor(starting_cursor)
 # positions, sizes, & velocity
 birth_speed = 1000
 
+shield_pos = pg.Vector2((screen.get_width()-shield.get_width())/2,(screen.get_height()-shield.get_height()) / 2)
+reflector_pos = pg.Vector2((screen.get_width()-reflector.get_width())/2, (screen.get_height()-reflector.get_height()) / 2)
 gameboard_pos = pg.Vector2((screen.get_width()-gameboard.get_width()) / 2, (screen.get_height()-gameboard.get_height()) / 2)
+start_button_pos = pg.Vector2(screen.get_width()-25-start_button.get_width(), (screen.get_height()-25-start_button.get_height()))
+
 
 neutron_size = 10
 starting_pos = pg.Vector2(gameboard.get_width() / 2, gameboard.get_height() / 2)
 
 fuel_button_size = 50
-fuel_button_pos = pg.Vector2(100,150)
+fuel_button_pos = pg.Vector2(75,150)
 
 moderator_button_size = 50
-moderator_button_pos = pg.Vector2(100,300)
+moderator_button_pos = pg.Vector2(75,300)
 
 poison_button_size = 50
-poison_button_pos = pg.Vector2(100,450)
+poison_button_pos = pg.Vector2(75,450)
+
+coolant_button_size = 50
+coolant_button_pos = pg.Vector2(75,600)
+
+
 
 # functions
 def bounce(neutron,direction):    
@@ -132,8 +150,7 @@ def add_text(string,pos,surface,color="white",fontsize = 30):
     textpos = text.get_rect(centerx=pos.x, centery=pos.y)
 
     surface.blit(text, textpos)    
-    
-birth()
+
 while running:
     # poll for events
     # pg.QUIT event means the user clicked X to close your window
@@ -142,15 +159,22 @@ while running:
             running = False
         elif event.type == pg.MOUSEBUTTONDOWN:
             click_pos =  pg.Vector2((event.pos[0],event.pos[1]))
-            if touching_circle(click_pos,fuel_button_pos,fuel_button_size):
-                cursor_size = 0
-                fuel_cursor_growing = True
-            if touching_circle(click_pos,moderator_button_pos,moderator_button_size):
-                cursor_size = 0
-                moderator_cursor_growing = True
-            if touching_circle(click_pos,poison_button_pos,poison_button_size):
-                cursor_size = 0
-                poison_cursor_growing = True
+            if started = False:
+                if touching_circle(click_pos,fuel_button_pos,fuel_button_size):
+                    cursor_size = 0
+                    fuel_cursor_growing = True
+                if touching_circle(click_pos,moderator_button_pos,moderator_button_size):
+                    cursor_size = 0
+                    moderator_cursor_growing = True
+                if touching_circle(click_pos,poison_button_pos,poison_button_size):
+                    cursor_size = 0
+                    poison_cursor_growing = True
+                if touching_circle(click_pos,coolant_button_pos,coolant_button_size):
+                    cursor_size = 0
+                    coolant_cursor_growing = True
+            if touching_circle(click_pos,start_button_pos,100):
+                started = True
+                birth()
         elif event.type == pg.MOUSEBUTTONUP:
             if fuel_cursor_growing == True:
                 fuel_cursor_growing = False
@@ -169,23 +193,37 @@ while running:
                 poison_to_place = True
             elif poison_to_place == True:
                 place_spot(poison_spots)
-                poison_to_place = False                      
+                poison_to_place = False     
+            if coolant_cursor_growing == True:
+                coolant_cursor_growing = False
+                coolant_to_place = True
+            elif coolant_to_place == True:
+                place_spot(coolant_spots)
+                coolant_to_place = False                     
     # grow the cursor
     if fuel_cursor_growing: 
-        grow_cursor("fuel","black")
+        grow_cursor("f","black")
     
     if moderator_cursor_growing: 
-        grow_cursor("moderator","purple")
+        grow_cursor("m","purple")
         
     if poison_cursor_growing: 
-        grow_cursor("poison","green")
-        
-        
+        grow_cursor("p",poison_color)      
+    if coolant_cursor_growing: 
+        grow_cursor("c",coolant_color)
     # fill the screen with a color to wipe away anything from last frame
     screen.fill("yellow")     
     gameboard.fill("white")
+    shield.fill("gray")
+    reflector.fill("green")
+    start_button.fill("orange")
     add_text("fissions:" + str(fission_count),pg.Vector2(screen.get_width() / 2, 10),screen,'black')
     add_text("neutrons:" + str(len(neutrons)),pg.Vector2(screen.get_width() / 2, 40),screen,'black')
+    add_text("shielding",pg.Vector2(shield.get_width() / 2, 10),shield,'black')
+    add_text("reflector",pg.Vector2(reflector.get_width() / 2, 10),reflector,'black')
+    add_text("start",pg.Vector2(start_button.get_width() / 2, start_button.get_height()/2),start_button,'black')
+
+
 
     for spot in fuel_spots:
         fuel_spot = pg.draw.circle(gameboard, "black", spot['position'], spot['size'])
@@ -202,13 +240,20 @@ while running:
     add_text("moderator",moderator_button_pos,screen)
     
     for spot in poison_spots:
-        poison_spot = pg.draw.circle(gameboard, "green", spot['position'], spot['size'])
-        add_text("p",spot['position'],gameboard,color="black",fontsize=12)
-        
+        poison_spot = pg.draw.circle(gameboard, poison_color, spot['position'], spot['size'])
+        add_text("p",spot['position'],gameboard,fontsize=12)
+
     
-    pg.draw.circle(screen, "green", poison_button_pos, poison_button_size)
+    pg.draw.circle(screen, poison_color, poison_button_pos, poison_button_size)
     add_text("poison",poison_button_pos,screen)
+       
+    for spot in coolant_spots:
+        coolant_spot = pg.draw.circle(gameboard, coolant_color, spot['position'], spot['size'])
+        add_text("c",spot['position'],gameboard,fontsize=12)
+
     
+    pg.draw.circle(screen, coolant_color, coolant_button_pos, coolant_button_size)
+    add_text("coolant",coolant_button_pos,screen)
             
     i = 0
     for neutron in neutrons:    
@@ -235,7 +280,11 @@ while running:
         neutron['position'].x += neutron['velocity'].x * dt
         neutron['position'].y += neutron['velocity'].y * dt
 
+    screen.blit(shield,shield_pos) 
+    screen.blit(reflector,reflector_pos) 
     screen.blit(gameboard,gameboard_pos) 
+    screen.blit(start_button,start_button_pos) 
+
 
     # flip() the display to put your work on screen
     pg.display.flip()
