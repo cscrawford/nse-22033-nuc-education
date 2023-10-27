@@ -44,7 +44,7 @@ coolant_color = "blue"
 # numbers
 dt = 0
 t = 0
-fission_count = 0
+fission_count = []
 cursor_size = 0
 coolant_flow_rate = 1
 poison_effectiveness = 0.1
@@ -145,12 +145,10 @@ def moderated_bounce(moderator,neutron,i):
     return neutron
         
 def fission(spot,index):
-    global fission_count
     death(index)
     hot_spots.append({'position':spot['position'],'size':0})
     birth()
     birth()
-    fission_count += 1
     
 def death(index):
     del(neutrons[i])
@@ -201,6 +199,40 @@ def add_text(string,pos,surface,color="white",fontsize = 30):
     textpos = text.get_rect(centerx=pos.x, centery=pos.y)
 
     surface.blit(text, textpos)    
+
+def reset_game():     
+    global fission_count     
+    global t  
+    global criticality      
+    global poison_effectiveness     
+    global coolant_flow_rate      
+    global neutrons     
+    global fuel_spots     
+    global moderator_spots     
+    global poison_spots     
+    global coolant_spots     
+    global neutron_count     
+    global supercritical     
+    global overheat     
+    global rxn_started
+    global hot_spots
+    fission_count = []
+    t = 0
+    criticality = 0
+    poison_effectiveness = 0.1
+    coolant_flow_rate = 1
+    hot_spots = []
+    neutrons = []
+    fuel_spots = []
+    moderator_spots = []
+    poison_spots = []
+    coolant_spots = []
+    neutron_count = []
+    supercritical = False
+    overheat = False
+    rxn_started = False
+
+
 
 while running:
     # poll for events
@@ -362,6 +394,13 @@ while running:
         neutron['position'].x += neutron['velocity'].x * dt
         neutron['position'].y += neutron['velocity'].y * dt
     i=0
+    
+    fission_count.append(fissions_this_step)
+    if len(fission_count) > 1000:
+        fission_count.pop(0)
+    if len(fission_count) > 2:
+        power_level = sum(fission_count)
+        max_fissions = max(max_fissions,power_level)
 
     if rxn_started:
         for heat in hot_spots:
@@ -373,7 +412,10 @@ while running:
                     coolant['at_capacity'] = 1000/coolant['size']
             i += 1
         for coolant in coolant_spots:
-            coolant_flow_rate -= (1 - coolant['at_capacity'])/10000
+            if coolant_flow_rate > 0:
+                coolant_flow_rate -= (1 - coolant['at_capacity'])/1000000
+            else:
+                coolant_flow_rate = 0
             coolant['at_capacity']  -= 1
         
 
@@ -415,7 +457,7 @@ while running:
     if total_hotspot_area > screen.get_width():
         overheat = True
 
-    max_fissions = max(max_fissions,fissions_this_step)
+
 
     while supercritical == True:
         game_over_message.fill("yellow")
@@ -428,19 +470,9 @@ while running:
         pg.display.flip()
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                running = False
+                pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                fission_count = 0
-                criticality = 0
-                poison_effectiveness = 0.1
-                neutrons = []
-                fuel_spots = []
-                moderator_spots = []
-                poison_spots = []
-                coolant_spots = []
-                neutron_count = []
-                supercritical = False
-                rxn_started = False
+                reset_game()
 
                 
     while rxn_started == True and len(neutrons)==0:
@@ -454,25 +486,13 @@ while running:
         pg.display.flip()
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                running = False
+                pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                fission_count = 0
-                t = 0
-                criticality = 0
-                poison_effectiveness = 0.1
-                neutrons = []
-                fuel_spots = []
-                moderator_spots = []
-                poison_spots = []
-                coolant_spots = []
-                neutron_count = []
-                supercritical = False
-                rxn_started = False
-
+                reset_game()
                                 
     while overheat == True:
         game_over_message.fill("yellow")
-        add_text("Oh no! Your reactor has melted down.", pg.Vector2(game_over_message.get_width()/2,game_over_message.get_height()/2-75),game_over_message,"black",25)
+        add_text("Oh no! Your fuel has overheated.", pg.Vector2(game_over_message.get_width()/2,game_over_message.get_height()/2-75),game_over_message,"black",25)
         add_text("Total Operation Time: " + str(int(t)) + " seconds.", pg.Vector2(game_over_message.get_width()/2,game_over_message.get_height()/2-50),game_over_message,"black",25)
         add_text("Maximum Power Level: " + str(int(max_fissions*200)) + " MeV/second", pg.Vector2(game_over_message.get_width()/2,game_over_message.get_height()/2-25),game_over_message,"black",25)
         add_text("Game Over", pg.Vector2(game_over_message.get_width()/2, game_over_message.get_height()/2),game_over_message,"black",50)    
@@ -481,20 +501,9 @@ while running:
         pg.display.flip()
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                running = False
+                pg.quit()                
             elif event.type == pg.MOUSEBUTTONDOWN:
-                fission_count = 0
-                t = 0
-                criticality = 0
-                poison_effectiveness = 0.1
-                neutrons = []
-                fuel_spots = []
-                moderator_spots = []
-                poison_spots = []
-                coolant_spots = []
-                neutron_count = []
-                supercritical = False
-                rxn_started = False
-
+                reset_game()
+        print ("still here")
 pg.quit()
 
