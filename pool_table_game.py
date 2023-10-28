@@ -696,7 +696,7 @@ while running:
             50,
         )
         add_text(
-            "Click anywhere to restart.",
+            "Click reset to restart.",
             pg.Vector2(
                 game_over_message.get_width() / 2,
                 game_over_message.get_height() / 2 + 50,
@@ -711,7 +711,11 @@ while running:
             if event.type == pg.QUIT:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                reset_game()
+                click_pos = pg.Vector2(event.pos[0], event.pos[1])
+                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
+                    reset_game()
+                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                    pg.quit()
 
     while rxn_started == True and len(neutrons) == 0:
         game_over_message.fill("yellow")
@@ -755,7 +759,7 @@ while running:
             50,
         )
         add_text(
-            "Click anywhere to restart.",
+            "Click reset to restart.",
             pg.Vector2(
                 game_over_message.get_width() / 2,
                 game_over_message.get_height() / 2 + 50,
@@ -770,7 +774,11 @@ while running:
             if event.type == pg.QUIT:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                reset_game()
+                click_pos = pg.Vector2(event.pos[0], event.pos[1])
+                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
+                    reset_game()
+                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                    pg.quit()
 
     while overheat == True:
         game_over_message.fill("yellow")
@@ -814,7 +822,7 @@ while running:
             50,
         )
         add_text(
-            "Click anywhere to restart.",
+            "Click reset to restart.",
             pg.Vector2(
                 game_over_message.get_width() / 2,
                 game_over_message.get_height() / 2 + 50,
@@ -829,6 +837,9 @@ while running:
             if event.type == pg.QUIT:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                reset_game()
-        print("still here")
+                click_pos = pg.Vector2(event.pos[0], event.pos[1])
+                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
+                    reset_game()
+                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                    pg.quit()
 pg.quit()
