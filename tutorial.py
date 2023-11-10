@@ -158,7 +158,7 @@ poison_button_pos = pg.Vector2(75, 450)
 coolant_button_size = 50
 coolant_button_pos = pg.Vector2(75, 600)
 
-place_here_size = 30
+place_here_size = 60
 first_mod_pos = pg.Vector2(gameboard.get_width() * 3 / 4, gameboard.get_height() / 2)
 first_fuel_pos = pg.Vector2(gameboard.get_width() / 4, first_mod_pos.y)
 fist_coolant_pos = pg.Vector2(first_fuel_pos.x + place_here_size + 5, first_fuel_pos.y)
@@ -724,7 +724,7 @@ tutorial_messages = [
     "In nuclear reactors, poison means neutron poison.",
     "Poison atoms are very sticky and very stable.",
     "So if a neutron crashes into them, it's absorbed.",
-    "We want some of the neutrons are to be absorbed in the poison.",
+    "We want some of the neutrons to be absorbed in the poison.",
     "If all the neutrons are absorbed by the fuel, ",
     "More and more neutrons will be released.",
     "Pretty soon, we lose control of them.",
