@@ -418,9 +418,9 @@ while running:
 
             if touching_rectangle(quit_button, quit_button_pos, click_pos):
                 running = False
-            if touching_rectangle(poison_up, poison_up_pos, click_pos):
+            if touching_rectangle(poison_up, poison_up_pos, click_pos) and poison_effectiveness < 1:
                 poison_effectiveness += 0.01
-            if touching_rectangle(poison_down, poison_down_pos, click_pos):
+            if touching_rectangle(poison_down, poison_down_pos, click_pos) and poison_effectiveness > 0:
                 poison_effectiveness -= 0.01
             if touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos):
                 coolant_flow_rate += 0.01
@@ -629,7 +629,7 @@ while running:
     for spot in poison_spots:
         poison_spot = pg.draw.circle(
             gameboard,
-            "brown",
+            poison_color,
             spot["position"],
             spot["size"],
         )
@@ -637,7 +637,7 @@ while running:
 
     pg.draw.circle(
         screen,
-        "brown",
+        poison_color,
         poison_button_pos,
         poison_button_size,
     )
