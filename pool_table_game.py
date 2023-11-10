@@ -41,7 +41,6 @@ overheat = False
 
 
 # colors
-poison_color = "brown"
 coolant_color = "blue"
 
 # numbers
@@ -153,6 +152,20 @@ coolant_button_pos = pg.Vector2(75, 600)
 
 
 # functions
+
+
+def reset_cursor():
+    global coolant_to_place
+    global poison_to_place
+    global moderator_to_place
+    global fuel_to_place
+    pg.mouse.set_cursor(starting_cursor)
+    coolant_to_place = False
+    poison_to_place = False
+    moderator_to_place = False
+    fuel_to_place = False
+
+
 def bounce(neutron, direction):
     if direction == "bottom":
         neutron["velocity"].y = -abs(neutron["velocity"].y)
@@ -210,6 +223,7 @@ def death(index):
 
 def grow_cursor(name, spot_color):
     global cursor_size
+    reset_cursor()
     cursor_size += 1
     surf = pg.Surface((cursor_size, cursor_size))  # you could also load an image
     surf.fill("white")  # and use that as your surface
@@ -237,7 +251,6 @@ def place_spot(spot_type):
         and new_y < gameboard.get_height()
     ):
         spot_type.append({"position": new_pos, "size": cursor_size / 2})
-    pg.mouse.set_cursor(starting_cursor)
 
 
 def place_coolant():
@@ -255,7 +268,6 @@ def place_coolant():
         coolant_spots.append(
             {"position": new_pos, "size": cursor_size / 2, "at_capacity": 0}
         )
-    pg.mouse.set_cursor(starting_cursor)
 
 
 def touching_circle(position1, position2, size1, size2=0):
@@ -340,6 +352,13 @@ def reset_gameboard():
 while running:
     # poll for events
     # pg.QUIT event means the user clicked X to close your window
+
+    poison_color = (
+        max(0, 255 - (255 - 165) * poison_effectiveness),
+        max(0, 255 - (255 - 42) * poison_effectiveness),
+        max(0, 255 - (255 - 42) * poison_effectiveness),
+    )
+
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
@@ -387,30 +406,35 @@ while running:
                 coolant_flow_rate -= 0.01
 
         elif event.type == pg.MOUSEBUTTONUP:
+            # cursore stop growing
             if fuel_cursor_growing == True:
                 fuel_cursor_growing = False
                 fuel_to_place = True
-            elif fuel_to_place == True:
-                place_spot(fuel_spots)
-                fuel_to_place = False
-            if moderator_cursor_growing == True:
+            elif moderator_cursor_growing == True:
                 moderator_cursor_growing = False
                 moderator_to_place = True
-            elif moderator_to_place == True:
-                place_spot(moderator_spots)
-                moderator_to_place = False
-            if poison_cursor_growing == True:
+            elif poison_cursor_growing == True:
                 poison_cursor_growing = False
                 poison_to_place = True
-            elif poison_to_place == True:
-                place_spot(poison_spots)
-                poison_to_place = False
-            if coolant_cursor_growing == True:
+            elif coolant_cursor_growing == True:
                 coolant_cursor_growing = False
                 coolant_to_place = True
-            elif coolant_to_place == True:
-                place_coolant()
-                coolant_to_place = False
+
+            # place spot
+            elif touching_rectrangle(gameboard, gameboard_pos, click_pos):
+                if fuel_to_place == True:
+                    place_spot(fuel_spots)
+                elif moderator_to_place == True:
+                    place_spot(moderator_spots)
+                elif poison_to_place == True:
+                    place_spot(poison_spots)
+                elif coolant_to_place == True:
+                    place_coolant()
+
+            # reset cursor
+            else:
+                reset_cursor()
+
     # grow the cursor
     if fuel_cursor_growing:
         grow_cursor("f", "black")
@@ -574,11 +598,16 @@ while running:
             gameboard,
             poison_color,
             spot["position"],
-            spot["size"] * poison_effectiveness,
+            spot["size"],
         )
         add_text("p", spot["position"], gameboard, fontsize=12)
 
-    pg.draw.circle(screen, poison_color, poison_button_pos, poison_button_size)
+    pg.draw.circle(
+        screen,
+        poison_color,
+        poison_button_pos,
+        poison_button_size,
+    )
     add_text("poison", poison_button_pos, screen)
 
     for spot in coolant_spots:
@@ -646,6 +675,7 @@ while running:
         for heat in hot_spots:
             heat["size"] += 1
             pg.draw.circle(gameboard, "pink", heat["position"], heat["size"])
+            add_text("heat", heat["position"], gameboard, color="black", fontsize=18)
             for coolant in coolant_spots:
                 if (
                     touching_circle(
