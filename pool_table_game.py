@@ -629,7 +629,7 @@ while running:
     for spot in poison_spots:
         poison_spot = pg.draw.circle(
             gameboard,
-            poison_color,
+            "brown",
             spot["position"],
             spot["size"],
         )
@@ -637,7 +637,7 @@ while running:
 
     pg.draw.circle(
         screen,
-        poison_color,
+        "brown",
         poison_button_pos,
         poison_button_size,
     )
@@ -721,7 +721,8 @@ while running:
                 ):
                     del hot_spots[i]
                     coolant["at_capacity"] = 1000 / coolant["size"]
-            i += 1
+                else: 
+                    i += 1
         for coolant in coolant_spots:
             if coolant_flow_rate > 0:
                 coolant_flow_rate -= (1 - coolant["at_capacity"]) / 1000000
