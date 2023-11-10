@@ -420,11 +420,11 @@ while running:
                 running = False
             if touching_rectangle(poison_up, poison_up_pos, click_pos) and poison_effectiveness < 1:
                 poison_effectiveness += 0.01
-            if touching_rectangle(poison_down, poison_down_pos, click_pos) and poison_effectiveness > 0:
+            if touching_rectangle(poison_down, poison_down_pos, click_pos) and poison_effectiveness > 0.01:
                 poison_effectiveness -= 0.01
-            if touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos):
+            if touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos) and coolant_flow_rate < 1:
                 coolant_flow_rate += 0.01
-            if touching_rectangle(coolant_flow_down, coolant_flow_down_pos, click_pos):
+            if touching_rectangle(coolant_flow_down, coolant_flow_down_pos, click_pos) and coolant_flow_rate > 0.01:
                 coolant_flow_rate -= 0.01
 
         elif event.type == pg.MOUSEBUTTONUP:
@@ -720,9 +720,10 @@ while running:
                     and coolant["at_capacity"] < 1
                 ):
                     del hot_spots[i]
+                    i -= 1
                     coolant["at_capacity"] = 1000 / coolant["size"]
-                else: 
-                    i += 1
+                
+            i += 1
         for coolant in coolant_spots:
             if coolant_flow_rate > 0:
                 coolant_flow_rate -= (1 - coolant["at_capacity"]) / 1000000
