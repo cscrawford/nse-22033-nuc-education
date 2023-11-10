@@ -10,7 +10,8 @@ shield = pg.Surface((1000, 600))
 reflector = pg.Surface((950, 550))
 gameboard = pg.Surface((900, 500))
 start_button = pg.Surface((75, 50))
-reset_button = pg.Surface((75, 50))
+reset_gameboard_button = pg.Surface((75, 50))
+reset_neutrons_button = pg.Surface((75, 50))
 quit_button = pg.Surface((75, 50))
 game_over_message = pg.Surface((600, 300))
 poison_meter = pg.Surface((75, 50))
@@ -85,10 +86,16 @@ start_button_pos = pg.Vector2(
     screen.get_width() - 25 - start_button.get_width(),
     (screen.get_height() - 25 - start_button.get_height()),
 )
-reset_button_pos = pg.Vector2(screen.get_width() - 25 - start_button.get_width(), 50)
+reset_gameboard_button_pos = pg.Vector2(
+    screen.get_width() - 25 - start_button.get_width(), 50
+)
+reset_neutrons_button_pos = pg.Vector2(
+    screen.get_width() - 25 - start_button.get_width(),
+    75 + reset_gameboard_button.get_height(),
+)
 quit_button_pos = pg.Vector2(
     screen.get_width() - 25 - start_button.get_width(),
-    75 + reset_button.get_height(),
+    100 + reset_neutrons_button.get_height() + reset_gameboard_button.get_height(),
 )
 
 # coolant meter
@@ -274,7 +281,30 @@ def add_text(string, pos, surface, color="white", fontsize=30):
     surface.blit(text, textpos)
 
 
-def reset_game():
+def reset_neutrons():
+    global fission_count
+    global t
+    global criticality
+    global coolant_flow_rate
+    global neutrons
+    global neutron_count
+    global supercritical
+    global overheat
+    global rxn_started
+    global hot_spots
+    fission_count = []
+    t = 0
+    criticality = 0
+    coolant_flow_rate = 1
+    hot_spots = []
+    neutrons = []
+    neutron_count = []
+    supercritical = False
+    overheat = False
+    rxn_started = False
+
+
+def reset_gameboard():
     global fission_count
     global t
     global criticality
@@ -337,8 +367,14 @@ while running:
                 rxn_started = True
                 for i in range(50):
                     birth()
-            if touching_rectrangle(reset_button, reset_button_pos, click_pos):
-                reset_game()
+            if touching_rectrangle(
+                reset_gameboard_button, reset_gameboard_button_pos, click_pos
+            ):
+                reset_gameboard()
+            if touching_rectrangle(
+                reset_neutrons_button, reset_neutrons_button_pos, click_pos
+            ):
+                reset_neutrons()
             if touching_rectrangle(quit_button, quit_button_pos, click_pos):
                 running = False
             if touching_rectrangle(poison_up, poison_up_pos, click_pos):
@@ -392,7 +428,8 @@ while running:
     shield.fill("gray")
     reflector.fill("green")
     start_button.fill("orange")
-    reset_button.fill("orange")
+    reset_gameboard_button.fill("orange")
+    reset_neutrons_button.fill("orange")
     quit_button.fill("orange")
     poison_meter.fill("white")
     coolant_flow_meter.fill("white")
@@ -431,10 +468,24 @@ while running:
         "black",
     )
     add_text(
-        "reset",
-        pg.Vector2(reset_button.get_width() / 2, reset_button.get_height() / 2),
-        reset_button,
+        "reset gameboard",
+        pg.Vector2(
+            reset_gameboard_button.get_width() / 2,
+            reset_gameboard_button.get_height() / 2,
+        ),
+        reset_gameboard_button,
         "black",
+        fontsize=14,
+    )
+    add_text(
+        "reset neutrons",
+        pg.Vector2(
+            reset_neutrons_button.get_width() / 2,
+            reset_neutrons_button.get_height() / 2,
+        ),
+        reset_neutrons_button,
+        "black",
+        fontsize=14,
     )
     add_text(
         "quit",
@@ -620,7 +671,8 @@ while running:
     screen.blit(gameboard, gameboard_pos)
     screen.blit(start_button, start_button_pos)
     screen.blit(quit_button, quit_button_pos)
-    screen.blit(reset_button, reset_button_pos)
+    screen.blit(reset_gameboard_button, reset_gameboard_button_pos)
+    screen.blit(reset_neutrons_button, reset_neutrons_button_pos)
     screen.blit(poison_meter, poison_meter_pos)
     screen.blit(coolant_flow_meter, coolant_flow_meter_pos)
     screen.blit(poison_meter_label, poison_meter_label_pos)
@@ -712,8 +764,14 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
-                    reset_game()
+                if touching_rectrangle(
+                    reset_gameboard_button, reset_gameboard_button_pos, click_pos
+                ):
+                    reset_gameboard()
+                if touching_rectrangle(
+                    reset_neutrons_button, reset_neutrons_button_pos, click_pos
+                ):
+                    reset_neutrons()
                 if touching_rectrangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 
@@ -775,8 +833,14 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
-                    reset_game()
+                if touching_rectrangle(
+                    reset_gameboard_button, reset_gameboard_button_pos, click_pos
+                ):
+                    reset_gameboard()
+                if touching_rectrangle(
+                    reset_neutrons_button, reset_neutrons_button_pos, click_pos
+                ):
+                    reset_neutrons()
                 if touching_rectrangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 
@@ -838,8 +902,14 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(reset_button, reset_button_pos, click_pos):
-                    reset_game()
+                if touching_rectrangle(
+                    reset_gameboard_button, reset_gameboard_button_pos, click_pos
+                ):
+                    reset_gameboard()
+                if touching_rectrangle(
+                    reset_neutrons_button, reset_neutrons_button_pos, click_pos
+                ):
+                    reset_neutrons()
                 if touching_rectrangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 pg.quit()
