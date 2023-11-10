@@ -12,6 +12,7 @@ gameboard = pg.Surface((900, 500))
 start_button = pg.Surface((75, 50))
 reset_gameboard_button = pg.Surface((75, 50))
 reset_neutrons_button = pg.Surface((75, 50))
+restart_tutorial_button = pg.Surface((75, 50))
 quit_button = pg.Surface((75, 50))
 game_over_message = pg.Surface((600, 300))
 poison_meter = pg.Surface((75, 50))
@@ -69,6 +70,11 @@ pg.mouse.set_cursor(starting_cursor)
 # positions, sizes, & velocity
 birth_speed = 1000
 
+# initialize click_pos
+click_pos = pg.Vector2(
+    (screen.get_width() - shield.get_width()) / 2,
+    (screen.get_height() - shield.get_height()) / 2,
+)
 shield_pos = pg.Vector2(
     (screen.get_width() - shield.get_width()) / 2,
     (screen.get_height() - shield.get_height()) / 2,
@@ -95,6 +101,13 @@ reset_neutrons_button_pos = pg.Vector2(
 quit_button_pos = pg.Vector2(
     screen.get_width() - 25 - start_button.get_width(),
     100 + reset_neutrons_button.get_height() + reset_gameboard_button.get_height(),
+)
+restart_tutorial_button_pos = pg.Vector2(
+    screen.get_width() - 25 - start_button.get_width(),
+    125
+    + reset_neutrons_button.get_height()
+    + reset_gameboard_button.get_height()
+    + quit_button.get_height(),
 )
 
 # coolant meter
@@ -136,7 +149,6 @@ game_over_message_pos = pg.Vector2(
 
 
 neutron_size = 10
-starting_pos = pg.Vector2(gameboard.get_width() / 2, gameboard.get_height() / 2)
 
 fuel_button_size = 50
 fuel_button_pos = pg.Vector2(75, 150)
@@ -179,9 +191,11 @@ def bounce(neutron, direction):
 
 
 def birth():
-    global starting_pos
     new_neutron = {}
-    new_neutron["position"] = copy.deepcopy(starting_pos)
+    new_neutron["position"] = pg.Vector2(
+        random.random() * gameboard.get_width(),
+        random.random() * gameboard.get_height(),
+    )
     theta = 2 * np.pi * random.random()
     new_neutron["velocity"] = pg.Vector2(
         birth_speed * np.cos(theta), birth_speed * np.sin(theta)
@@ -218,7 +232,7 @@ def fission(spot, index):
 
 
 def death(index):
-    del neutrons[i]
+    del neutrons[index]
 
 
 def grow_cursor(name, spot_color):
@@ -276,7 +290,7 @@ def touching_circle(position1, position2, size1, size2=0):
     ) ** 0.5 < size1 + size2
 
 
-def touching_rectrangle(surface1, position1, position2):
+def touching_rectangle(surface1, position1, position2):
     return (
         position1.x < position2.x
         and position1.x + surface1.get_width() > position2.x
@@ -380,29 +394,37 @@ while running:
                     cursor_size = 0
                     coolant_cursor_growing = True
             if (
-                touching_rectrangle(start_button, start_button_pos, click_pos)
+                touching_rectangle(start_button, start_button_pos, click_pos)
                 and rxn_started == False
             ):
                 rxn_started = True
                 for i in range(50):
                     birth()
-            if touching_rectrangle(
+            if touching_rectangle(
                 reset_gameboard_button, reset_gameboard_button_pos, click_pos
             ):
                 reset_gameboard()
-            if touching_rectrangle(
+            if touching_rectangle(
                 reset_neutrons_button, reset_neutrons_button_pos, click_pos
             ):
                 reset_neutrons()
-            if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+
+            if touching_rectangle(
+                restart_tutorial_button, restart_tutorial_button_pos, click_pos
+            ):
+                with open("tutorial.py", "r") as file:
+                    python_code = file.read()
+                    exec(python_code)
+
+            if touching_rectangle(quit_button, quit_button_pos, click_pos):
                 running = False
-            if touching_rectrangle(poison_up, poison_up_pos, click_pos):
+            if touching_rectangle(poison_up, poison_up_pos, click_pos):
                 poison_effectiveness += 0.01
-            if touching_rectrangle(poison_down, poison_down_pos, click_pos):
+            if touching_rectangle(poison_down, poison_down_pos, click_pos):
                 poison_effectiveness -= 0.01
-            if touching_rectrangle(coolant_flow_up, coolant_flow_up_pos, click_pos):
+            if touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos):
                 coolant_flow_rate += 0.01
-            if touching_rectrangle(coolant_flow_down, coolant_flow_down_pos, click_pos):
+            if touching_rectangle(coolant_flow_down, coolant_flow_down_pos, click_pos):
                 coolant_flow_rate -= 0.01
 
         elif event.type == pg.MOUSEBUTTONUP:
@@ -421,7 +443,7 @@ while running:
                 coolant_to_place = True
 
             # place spot
-            elif touching_rectrangle(gameboard, gameboard_pos, click_pos):
+            elif touching_rectangle(gameboard, gameboard_pos, click_pos):
                 if fuel_to_place == True:
                     place_spot(fuel_spots)
                 elif moderator_to_place == True:
@@ -454,6 +476,7 @@ while running:
     start_button.fill("orange")
     reset_gameboard_button.fill("orange")
     reset_neutrons_button.fill("orange")
+    restart_tutorial_button.fill("orange")
     quit_button.fill("orange")
     poison_meter.fill("white")
     coolant_flow_meter.fill("white")
@@ -508,6 +531,16 @@ while running:
             reset_neutrons_button.get_height() / 2,
         ),
         reset_neutrons_button,
+        "black",
+        fontsize=14,
+    )
+    add_text(
+        "restart tutorial",
+        pg.Vector2(
+            restart_tutorial_button.get_width() / 2,
+            restart_tutorial_button.get_height() / 2,
+        ),
+        restart_tutorial_button,
         "black",
         fontsize=14,
     )
@@ -703,6 +736,7 @@ while running:
     screen.blit(quit_button, quit_button_pos)
     screen.blit(reset_gameboard_button, reset_gameboard_button_pos)
     screen.blit(reset_neutrons_button, reset_neutrons_button_pos)
+    screen.blit(restart_tutorial_button, restart_tutorial_button_pos)
     screen.blit(poison_meter, poison_meter_pos)
     screen.blit(coolant_flow_meter, coolant_flow_meter_pos)
     screen.blit(poison_meter_label, poison_meter_label_pos)
@@ -794,15 +828,19 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_gameboard_button, reset_gameboard_button_pos, click_pos
                 ):
                     reset_gameboard()
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_neutrons_button, reset_neutrons_button_pos, click_pos
                 ):
                     reset_neutrons()
-                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                if touching_rectangle(
+                    restart_tutorial_button, restart_tutorial_button_pos, click_pos
+                ):
+                    reset_neutrons()
+                if touching_rectangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 
     while rxn_started == True and len(neutrons) == 0:
@@ -863,15 +901,19 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_gameboard_button, reset_gameboard_button_pos, click_pos
                 ):
                     reset_gameboard()
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_neutrons_button, reset_neutrons_button_pos, click_pos
                 ):
                     reset_neutrons()
-                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                if touching_rectangle(
+                    restart_tutorial_button, restart_tutorial_button_pos, click_pos
+                ):
+                    reset_neutrons()
+                if touching_rectangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 
     while overheat == True:
@@ -932,14 +974,18 @@ while running:
                 pg.quit()
             elif event.type == pg.MOUSEBUTTONDOWN:
                 click_pos = pg.Vector2(event.pos[0], event.pos[1])
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_gameboard_button, reset_gameboard_button_pos, click_pos
                 ):
                     reset_gameboard()
-                if touching_rectrangle(
+                if touching_rectangle(
                     reset_neutrons_button, reset_neutrons_button_pos, click_pos
                 ):
                     reset_neutrons()
-                if touching_rectrangle(quit_button, quit_button_pos, click_pos):
+                if touching_rectangle(
+                    restart_tutorial_button, restart_tutorial_button_pos, click_pos
+                ):
+                    reset_neutrons()
+                if touching_rectangle(quit_button, quit_button_pos, click_pos):
                     pg.quit()
 pg.quit()
