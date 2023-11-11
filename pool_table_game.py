@@ -349,6 +349,7 @@ def reset_neutrons():
     global overheat
     global rxn_started
     global hot_spots
+    global tutorial_step
     fission_count = []
     t = 0
     criticality = 0
@@ -359,6 +360,7 @@ def reset_neutrons():
     supercritical = False
     overheat = False
     rxn_started = False
+    tutorial_step = 100
 
 
 def place_mod():
@@ -446,7 +448,7 @@ def neutron_transport():
                 and poison_effectiveness > 0
             ):
                 death(i)
-                i-=1
+                i -= 1
         i += 1
         neutron["position"].x += neutron["velocity"].x * dt
         neutron["position"].y += neutron["velocity"].y * dt
@@ -478,6 +480,7 @@ def neutron_transport():
                     i -= 1
                     coolant["at_capacity"] = 1000 / coolant["size"]
             i += 1
+    if rxn_started:
         for coolant in coolant_spots:
             if coolant_flow_rate > 0:
                 coolant_flow_rate -= (1 - coolant["at_capacity"]) / 1000000
@@ -764,6 +767,7 @@ def reset_gameboard():
     global overheat
     global rxn_started
     global hot_spots
+    global tutorial_step
     fission_count = []
     t = 0
     criticality = 0
@@ -779,6 +783,7 @@ def reset_gameboard():
     supercritical = False
     overheat = False
     rxn_started = False
+    tutorial_step = 100
 
 
 def advance_if_clicked():
@@ -792,6 +797,19 @@ def advance_if_clicked():
             click_pos = pg.Vector2(event.pos[0], event.pos[1])
             if touching_rectangle(quit_button, quit_button_pos, click_pos):
                 pg.quit()
+            if touching_rectangle(
+                reset_gameboard_button, reset_gameboard_button_pos, click_pos
+            ):
+                reset_gameboard()
+            if touching_rectangle(
+                reset_neutrons_button, reset_neutrons_button_pos, click_pos
+            ):
+                reset_neutrons()
+
+            if touching_rectangle(
+                restart_tutorial_button, restart_tutorial_button_pos, click_pos
+            ):
+                tutorial_step = 0
             else:
                 tutorial_step += 1
                 time_since_last_click = 0
@@ -974,7 +992,7 @@ while running:
 
         dt = clock.tick(60) / 1000
         time_since_last_click += dt
-        if time_since_last_click >= 2:
+        if time_since_last_click >= 1:
             advance_if_clicked()
         else:
             exit_button_only()
