@@ -446,6 +446,7 @@ def neutron_transport():
                 and poison_effectiveness > 0
             ):
                 death(i)
+                i-=1
         i += 1
         neutron["position"].x += neutron["velocity"].x * dt
         neutron["position"].y += neutron["velocity"].y * dt
@@ -1094,10 +1095,10 @@ while running:
     if rxn_started:
         t += dt
     neutron_count.append(len(neutrons))
-    if len(neutron_count) > 75:
+    if len(neutron_count) > 50:
         neutron_count.pop(0)
     if len(neutron_count) > 2:
-        if neutron_count[0] > 50:
+        if neutron_count[0] > 10:
             criticality = neutron_count[-1] / neutron_count[0]
             if criticality > 1.2:
                 supercritical = True
