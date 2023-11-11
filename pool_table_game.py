@@ -23,6 +23,7 @@ poison_meter_label = pg.Surface((100, 25))
 coolant_flow_meter = pg.Surface((75, 50))
 coolant_flow_down = pg.Surface((25, 25))
 coolant_flow_up = pg.Surface((25, 25))
+message_box = pg.Surface((700, 50))
 
 clock = pg.time.Clock()
 
@@ -39,6 +40,7 @@ coolant_cursor_growing = False
 rxn_started = False
 supercritical = False
 overheat = False
+fuel_tutorial_step_is_passed = False
 
 
 # colors
@@ -53,6 +55,9 @@ coolant_flow_rate = 1
 poison_effectiveness = 0.1
 criticality = 0
 max_fissions = 0
+tutorial_step = 100
+wait_count = 0
+time_since_last_click = 0
 
 # lists
 neutrons = []
@@ -109,6 +114,10 @@ restart_tutorial_button_pos = pg.Vector2(
     + reset_gameboard_button.get_height()
     + quit_button.get_height(),
 )
+message_box_pos = pg.Vector2(
+    (screen.get_width() / 2 - message_box.get_width() / 2),
+    (screen.get_height() - message_box.get_height() - 5),
+)
 
 # coolant meter
 coolant_flow_meter_pos = pg.Vector2(
@@ -149,6 +158,7 @@ game_over_message_pos = pg.Vector2(
 
 
 neutron_size = 10
+starting_pos = pg.Vector2(gameboard.get_width() / 2, gameboard.get_height() / 2)
 
 fuel_button_size = 50
 fuel_button_pos = pg.Vector2(75, 150)
@@ -162,6 +172,10 @@ poison_button_pos = pg.Vector2(75, 450)
 coolant_button_size = 50
 coolant_button_pos = pg.Vector2(75, 600)
 
+place_here_size = 60
+first_mod_pos = pg.Vector2(gameboard.get_width() * 3 / 4, gameboard.get_height() / 2)
+first_fuel_pos = pg.Vector2(gameboard.get_width() / 4, first_mod_pos.y)
+fist_coolant_pos = pg.Vector2(first_fuel_pos.x + place_here_size + 5, first_fuel_pos.y)
 
 # functions
 
@@ -190,6 +204,14 @@ def bounce(neutron, direction):
     return neutron
 
 
+def tutorial_birth():
+    global starting_pos
+    new_neutron = {}
+    new_neutron["position"] = copy.deepcopy(starting_pos)
+    new_neutron["velocity"] = pg.Vector2(birth_speed, 0)
+    neutrons.append(new_neutron)
+
+
 def birth():
     new_neutron = {}
     new_neutron["position"] = pg.Vector2(
@@ -205,22 +227,31 @@ def birth():
 
 def moderated_bounce(moderator, neutron, i):
     global running
-    slowing_factor = 0.5 + 0.5 * random.random()
-    tangentVector = {}
-    tangentVector["y"] = -(moderator["position"].x - neutron["velocity"].x)
-    tangentVector["x"] = moderator["position"].y - neutron["velocity"].y
-    a = moderator["position"].x - neutron["position"].x
-    b = moderator["position"].y - neutron["position"].y
-    theta1 = np.arctan(b / a)
-    theta2 = np.arctan(neutron["velocity"].y / neutron["velocity"].x)
-    speed = (neutron["velocity"].y ** 2 + neutron["velocity"].x ** 2) ** 0.5
-    phi = np.pi - theta1 - theta2
-    neutron["position"].x -= 2 * neutron["velocity"].x * dt
-    neutron["position"].y -= 2 * neutron["velocity"].y * dt
-    neutron["velocity"].x = abs(a) / a * slowing_factor * speed * np.cos(phi)
-    neutron["velocity"].y = -abs(b) / b * slowing_factor * speed * np.sin(phi)
-    if speed < 100:
-        death(i)
+    global tutorial_step
+    global tutorial_messages
+    if tutorial_step >= len(tutorial_messages):
+        slowing_factor = 0.5 + 0.5 * random.random()
+        tangentVector = {}
+        tangentVector["y"] = -(moderator["position"].x - neutron["velocity"].x)
+        tangentVector["x"] = moderator["position"].y - neutron["velocity"].y
+        a = moderator["position"].x - neutron["position"].x
+        b = moderator["position"].y - neutron["position"].y
+        theta1 = np.arctan(b / a)
+        theta2 = np.arctan(neutron["velocity"].y / neutron["velocity"].x)
+        speed = (neutron["velocity"].y ** 2 + neutron["velocity"].x ** 2) ** 0.5
+        phi = np.pi - theta1 - theta2
+        neutron["position"].x -= 2 * neutron["velocity"].x * dt
+        neutron["position"].y -= 2 * neutron["velocity"].y * dt
+        neutron["velocity"].x = abs(a) / a * slowing_factor * speed * np.cos(phi)
+        neutron["velocity"].y = -abs(b) / b * slowing_factor * speed * np.sin(phi)
+        if speed < 100:
+            death(i)
+    else:
+        slowing_factor = 0.25
+        neutron["position"].x -= 2 * neutron["velocity"].x * dt
+        neutron["position"].y -= 2 * neutron["velocity"].y * dt
+        neutron["velocity"].x = -(neutron["velocity"].x) * slowing_factor
+        neutron["velocity"].y = -(neutron["velocity"].y) * slowing_factor
     return neutron
 
 
@@ -330,145 +361,138 @@ def reset_neutrons():
     rxn_started = False
 
 
-def reset_gameboard():
-    global fission_count
-    global t
-    global criticality
-    global poison_effectiveness
-    global coolant_flow_rate
+def place_mod():
+    global cursor_size
+    global fuel_to_place
+    moderator_spots.append({"position": first_mod_pos, "size": place_here_size / 2})
+
+
+def place_fuel():
+    global cursor_size
+    global fuel_to_place
+    fuel_spots.append({"position": first_fuel_pos, "size": place_here_size / 2})
+
+
+def blit_gameboard(message=False):
+    global screen, shield, reflector, gameboard, start_button, quit_button, reset_gameboard_button, reset_neutrons_button, poison_meter, coolant_flow_meter, poison_meter_label, coolant_flow_meter_label, poison_up, poison_down, coolant_flow_up, coolant_flow_down, message_box
+    global screen, shield_pos, reflector_pos, gameboard_pos, start_button_pos, quit_button_pos, reset_gameboard_button_pos, reset_neutrons_button_pos, poison_meter_pos, coolant_flow_meter_pos, poison_meter_label_pos, coolant_flow_meter_label_pos, poison_up_pos, poison_down_pos, coolant_flow_up_pos, coolant_flow_down_pos, message_box_pos
+
+    screen.blit(shield, shield_pos)
+    screen.blit(reflector, reflector_pos)
+    screen.blit(gameboard, gameboard_pos)
+    screen.blit(start_button, start_button_pos)
+    screen.blit(quit_button, quit_button_pos)
+    screen.blit(reset_gameboard_button, reset_gameboard_button_pos)
+    screen.blit(reset_neutrons_button, reset_neutrons_button_pos)
+    screen.blit(restart_tutorial_button, restart_tutorial_button_pos)
+    screen.blit(poison_meter, poison_meter_pos)
+    screen.blit(coolant_flow_meter, coolant_flow_meter_pos)
+    screen.blit(poison_meter_label, poison_meter_label_pos)
+    screen.blit(coolant_flow_meter_label, coolant_flow_meter_label_pos)
+    screen.blit(poison_up, poison_up_pos)
+    screen.blit(coolant_flow_up, coolant_flow_up_pos)
+    screen.blit(poison_down, poison_down_pos)
+    screen.blit(coolant_flow_down, coolant_flow_down_pos)
+    if message is not False:
+        screen.blit(message_box, message_box_pos)
+    # flip() the display to put your work on screen
+    pg.display.flip()
+
+
+def neutron_transport():
     global neutrons
-    global fuel_spots
-    global moderator_spots
-    global poison_spots
-    global coolant_spots
-    global neutron_count
-    global supercritical
-    global overheat
-    global rxn_started
-    global hot_spots
-    fission_count = []
-    t = 0
-    criticality = 0
-    poison_effectiveness = 0.1
-    coolant_flow_rate = 1
-    hot_spots = []
-    neutrons = []
-    fuel_spots = []
-    moderator_spots = []
-    poison_spots = []
-    coolant_spots = []
-    neutron_count = []
-    supercritical = False
-    overheat = False
-    rxn_started = False
+    global moderator_spots, fuel_spots, coolant_spots, poison_spots, hot_spots
+    global fissions_this_step
+    global coolant_flow_rate
+    global max_fissions
 
-
-while running:
-    # poll for events
-    # pg.QUIT event means the user clicked X to close your window
-
-    poison_color = (
-        max(0, 255 - (255 - 165) * poison_effectiveness),
-        max(0, 255 - (255 - 42) * poison_effectiveness),
-        max(0, 255 - (255 - 42) * poison_effectiveness),
-    )
-
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        elif event.type == pg.MOUSEBUTTONDOWN:
-            click_pos = pg.Vector2(event.pos[0], event.pos[1])
-            if rxn_started == False:
-                if touching_circle(click_pos, fuel_button_pos, fuel_button_size):
-                    cursor_size = 0
-                    fuel_cursor_growing = True
-                if touching_circle(
-                    click_pos, moderator_button_pos, moderator_button_size
-                ):
-                    cursor_size = 0
-                    moderator_cursor_growing = True
-                if touching_circle(click_pos, poison_button_pos, poison_button_size):
-                    cursor_size = 0
-                    poison_cursor_growing = True
-                if touching_circle(click_pos, coolant_button_pos, coolant_button_size):
-                    cursor_size = 0
-                    coolant_cursor_growing = True
+    i = 0
+    fissions_this_step = 0
+    for neutron in neutrons:
+        pg.draw.circle(gameboard, "red", neutron["position"], neutron_size)
+        if neutron["position"].y > gameboard.get_height():
+            neutron = bounce(neutron, "bottom")
+        if neutron["position"].y < 0:
+            neutron = bounce(neutron, "top")
+        if neutron["position"].x > gameboard.get_width():
+            neutron = bounce(neutron, "right")
+        if neutron["position"].x < 0:
+            neutron = bounce(neutron, "left")
+        for fuel in fuel_spots:
+            if touching_circle(
+                neutron["position"], fuel["position"], neutron_size, fuel["size"]
+            ):
+                if (
+                    neutron["velocity"].x ** 2 + neutron["velocity"].y ** 2
+                ) ** 0.5 < birth_speed / 2:
+                    fission(fuel, i)
+                    fissions_this_step += 1
+        for moderator in moderator_spots:
+            if touching_circle(
+                neutron["position"],
+                moderator["position"],
+                neutron_size,
+                moderator["size"],
+            ):
+                neutron = moderated_bounce(moderator, neutron, i)
+        for poison in poison_spots:
             if (
-                touching_rectangle(start_button, start_button_pos, click_pos)
-                and rxn_started == False
+                touching_circle(
+                    neutron["position"],
+                    poison["position"],
+                    neutron_size,
+                    poison["size"] * poison_effectiveness,
+                )
+                and poison_effectiveness > 0
             ):
-                rxn_started = True
-                for i in range(50):
-                    birth()
-            if touching_rectangle(
-                reset_gameboard_button, reset_gameboard_button_pos, click_pos
-            ):
-                reset_gameboard()
-            if touching_rectangle(
-                reset_neutrons_button, reset_neutrons_button_pos, click_pos
-            ):
-                reset_neutrons()
+                death(i)
+        i += 1
+        neutron["position"].x += neutron["velocity"].x * dt
+        neutron["position"].y += neutron["velocity"].y * dt
+    i = 0
 
-            if touching_rectangle(
-                restart_tutorial_button, restart_tutorial_button_pos, click_pos
-            ):
-                with open("tutorial.py", "r") as file:
-                    python_code = file.read()
-                    exec(python_code)
+    fission_count.append(fissions_this_step)
+    if len(fission_count) > 1000:
+        fission_count.pop(0)
+    if len(fission_count) > 2:
+        power_level = sum(fission_count)
+        max_fissions = max(max_fissions, power_level)
 
-            if touching_rectangle(quit_button, quit_button_pos, click_pos):
-                running = False
-            if touching_rectangle(poison_up, poison_up_pos, click_pos) and poison_effectiveness < 1:
-                poison_effectiveness += 0.01
-            if touching_rectangle(poison_down, poison_down_pos, click_pos) and poison_effectiveness > 0.01:
-                poison_effectiveness -= 0.01
-            if touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos) and coolant_flow_rate < 1:
-                coolant_flow_rate += 0.01
-            if touching_rectangle(coolant_flow_down, coolant_flow_down_pos, click_pos) and coolant_flow_rate > 0.01:
-                coolant_flow_rate -= 0.01
-
-        elif event.type == pg.MOUSEBUTTONUP:
-            # cursore stop growing
-            if fuel_cursor_growing == True:
-                fuel_cursor_growing = False
-                fuel_to_place = True
-            elif moderator_cursor_growing == True:
-                moderator_cursor_growing = False
-                moderator_to_place = True
-            elif poison_cursor_growing == True:
-                poison_cursor_growing = False
-                poison_to_place = True
-            elif coolant_cursor_growing == True:
-                coolant_cursor_growing = False
-                coolant_to_place = True
-
-            # place spot
-            elif touching_rectangle(gameboard, gameboard_pos, click_pos):
-                if fuel_to_place == True:
-                    place_spot(fuel_spots)
-                elif moderator_to_place == True:
-                    place_spot(moderator_spots)
-                elif poison_to_place == True:
-                    place_spot(poison_spots)
-                elif coolant_to_place == True:
-                    place_coolant()
-
-            # reset cursor
+    if fuel_tutorial_step_is_passed or rxn_started:
+        for heat in hot_spots:
+            heat["size"] += 1
+            pg.draw.circle(gameboard, "pink", heat["position"], heat["size"])
+            add_text("heat", heat["position"], gameboard, color="black", fontsize=18)
+            for coolant in coolant_spots:
+                if (
+                    touching_circle(
+                        heat["position"],
+                        coolant["position"],
+                        heat["size"],
+                        coolant["size"],
+                    )
+                    and coolant["at_capacity"] < 1
+                ) and len(hot_spots) > 0:
+                    del hot_spots[i]
+                    i -= 1
+                    coolant["at_capacity"] = 1000 / coolant["size"]
+            i += 1
+        for coolant in coolant_spots:
+            if coolant_flow_rate > 0:
+                coolant_flow_rate -= (1 - coolant["at_capacity"]) / 1000000
             else:
-                reset_cursor()
+                coolant_flow_rate = 0
+            coolant["at_capacity"] -= 1
 
-    # grow the cursor
-    if fuel_cursor_growing:
-        grow_cursor("f", "black")
 
-    if moderator_cursor_growing:
-        grow_cursor("m", "purple")
-
-    if poison_cursor_growing:
-        grow_cursor("p", poison_color)
-    if coolant_cursor_growing:
-        grow_cursor("c", coolant_color)
-    # fill the screen with a color to wipe away anything from last frame
+def repaint_gameboard(
+    message=False,
+):  # fill the screen with a color to wipe away anything from last frame
+    global screen, shield, reflector, gameboard, start_button, quit_button, reset_gameboard_button, reset_neutrons_button, poison_meter, coolant_flow_meter, poison_meter_label, coolant_flow_meter_label, poison_up, poison_down, coolant_flow_up, coolant_flow_down, message_box
+    global screen, shield_pos, reflector_pos, gameboard_pos, start_button_pos, quit_button_pos, reset_gameboard_button_pos, reset_neutrons_button_pos, poison_meter_pos, coolant_flow_meter_pos, poison_meter_label_pos, coolant_flow_meter_label_pos, poison_up_pos, poison_down_pos, coolant_flow_up_pos, coolant_flow_down_pos, message_box_pos
+    global poison_color
+    global poison_effectiveness
+    global moderator_spots, neutrons
     screen.fill("yellow")
     gameboard.fill("white")
     shield.fill("gray")
@@ -615,7 +639,19 @@ while running:
         add_text("f", spot["position"], gameboard, fontsize=12)
 
     pg.draw.circle(screen, "black", fuel_button_pos, fuel_button_size)
-    add_text("fuel", fuel_button_pos, screen)
+    add_text("fuel", pg.Vector2(fuel_button_pos.x, fuel_button_pos.y - 15), screen)
+    add_text(
+        "fission for",
+        pg.Vector2(fuel_button_pos.x, fuel_button_pos.y),
+        screen,
+        fontsize=16,
+    )
+    add_text(
+        "slow neutrons",
+        pg.Vector2(fuel_button_pos.x, fuel_button_pos.y + 12),
+        screen,
+        fontsize=16,
+    )
 
     for spot in moderator_spots:
         moderator_spot = pg.draw.circle(
@@ -624,7 +660,21 @@ while running:
         add_text("m", spot["position"], gameboard, fontsize=12)
 
     pg.draw.circle(screen, "purple", moderator_button_pos, moderator_button_size)
-    add_text("moderator", moderator_button_pos, screen)
+    add_text(
+        "moderator", pg.Vector2(moderator_button_pos.x, moderator_button_pos.y), screen
+    )
+    add_text(
+        "slows down",
+        pg.Vector2(moderator_button_pos.x, moderator_button_pos.y + 15),
+        screen,
+        fontsize=16,
+    )
+    add_text(
+        "neutrons",
+        pg.Vector2(moderator_button_pos.x, moderator_button_pos.y + 27),
+        screen,
+        fontsize=16,
+    )
 
     for spot in poison_spots:
         poison_spot = pg.draw.circle(
@@ -633,7 +683,7 @@ while running:
             spot["position"],
             spot["size"],
         )
-        add_text("p", spot["position"], gameboard, fontsize=12)
+        add_text("p", spot["position"], gameboard, color="black", fontsize=12)
 
     pg.draw.circle(
         screen,
@@ -641,7 +691,26 @@ while running:
         poison_button_pos,
         poison_button_size,
     )
-    add_text("poison", poison_button_pos, screen)
+    add_text(
+        "poison",
+        pg.Vector2(poison_button_pos.x, poison_button_pos.y),
+        screen,
+        color="black",
+    )
+    add_text(
+        "absorbs all",
+        pg.Vector2(poison_button_pos.x, poison_button_pos.y + 15),
+        screen,
+        fontsize=16,
+        color="black",
+    )
+    add_text(
+        "neutrons",
+        pg.Vector2(poison_button_pos.x, poison_button_pos.y + 27),
+        screen,
+        fontsize=16,
+        color="black",
+    )
 
     for spot in coolant_spots:
         coolant_spot = pg.draw.circle(
@@ -651,105 +720,372 @@ while running:
 
     pg.draw.circle(screen, coolant_color, coolant_button_pos, coolant_button_size)
     add_text("coolant", coolant_button_pos, screen)
+    add_text("coolant", pg.Vector2(coolant_button_pos.x, coolant_button_pos.y), screen)
+    add_text(
+        "removes heat",
+        pg.Vector2(coolant_button_pos.x, coolant_button_pos.y + 15),
+        screen,
+        fontsize=16,
+    )
+    add_text(
+        "from fuel",
+        pg.Vector2(coolant_button_pos.x, coolant_button_pos.y + 27),
+        screen,
+        fontsize=16,
+    )
+    if message is not False:
+        message_box.fill("orange")
+        add_text(
+            message,
+            pg.Vector2((message_box.get_width() / 2), message_box.get_height() / 2),
+            message_box,
+            "black",
+        )
 
-    i = 0
-    fissions_this_step = 0
-    for neutron in neutrons:
-        pg.draw.circle(gameboard, "red", neutron["position"], neutron_size)
-        if neutron["position"].y > gameboard.get_height():
-            neutron = bounce(neutron, "bottom")
-        if neutron["position"].y < 0:
-            neutron = bounce(neutron, "top")
-        if neutron["position"].x > gameboard.get_width():
-            neutron = bounce(neutron, "right")
-        if neutron["position"].x < 0:
-            neutron = bounce(neutron, "left")
-        for fuel in fuel_spots:
-            if touching_circle(
-                neutron["position"], fuel["position"], neutron_size, fuel["size"]
-            ):
-                if (
-                    neutron["velocity"].x ** 2 + neutron["velocity"].y ** 2
-                ) ** 0.5 < birth_speed / 2:
-                    fission(fuel, i)
-                    fissions_this_step += 1
-        for moderator in moderator_spots:
-            if touching_circle(
-                neutron["position"],
-                moderator["position"],
-                neutron_size,
-                moderator["size"],
-            ):
-                neutron = moderated_bounce(moderator, neutron, i)
-        for poison in poison_spots:
-            if (
-                touching_circle(
-                    neutron["position"],
-                    poison["position"],
-                    neutron_size,
-                    poison["size"] * poison_effectiveness,
-                )
-                and poison_effectiveness > 0
-            ):
-                death(i)
-        i += 1
-        neutron["position"].x += neutron["velocity"].x * dt
-        neutron["position"].y += neutron["velocity"].y * dt
-    i = 0
+    neutron_transport()
 
-    fission_count.append(fissions_this_step)
-    if len(fission_count) > 1000:
-        fission_count.pop(0)
-    if len(fission_count) > 2:
-        power_level = sum(fission_count)
-        max_fissions = max(max_fissions, power_level)
+    blit_gameboard(message)
 
-    if rxn_started:
-        for heat in hot_spots:
-            heat["size"] += 1
-            pg.draw.circle(gameboard, "pink", heat["position"], heat["size"])
-            add_text("heat", heat["position"], gameboard, color="black", fontsize=18)
-            for coolant in coolant_spots:
-                if (
-                    touching_circle(
-                        heat["position"],
-                        coolant["position"],
-                        heat["size"],
-                        coolant["size"],
-                    )
-                    and coolant["at_capacity"] < 1
-                ):
-                    del hot_spots[i]
-                    i -= 1
-                    coolant["at_capacity"] = 1000 / coolant["size"]
-                
-            i += 1
-        for coolant in coolant_spots:
-            if coolant_flow_rate > 0:
-                coolant_flow_rate -= (1 - coolant["at_capacity"]) / 1000000
+
+def reset_gameboard():
+    global fission_count
+    global t
+    global criticality
+    global poison_effectiveness
+    global coolant_flow_rate
+    global neutrons
+    global fuel_spots
+    global moderator_spots
+    global poison_spots
+    global coolant_spots
+    global neutron_count
+    global supercritical
+    global overheat
+    global rxn_started
+    global hot_spots
+    fission_count = []
+    t = 0
+    criticality = 0
+    poison_effectiveness = 0.1
+    coolant_flow_rate = 1
+    hot_spots = []
+    neutrons = []
+    fuel_spots = []
+    moderator_spots = []
+    poison_spots = []
+    coolant_spots = []
+    neutron_count = []
+    supercritical = False
+    overheat = False
+    rxn_started = False
+
+
+def advance_if_clicked():
+    global running
+    global tutorial_step
+    global time_since_last_click
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            click_pos = pg.Vector2(event.pos[0], event.pos[1])
+            if touching_rectangle(quit_button, quit_button_pos, click_pos):
+                pg.quit()
             else:
-                coolant_flow_rate = 0
-            coolant["at_capacity"] -= 1
+                tutorial_step += 1
+                time_since_last_click = 0
 
-    screen.blit(shield, shield_pos)
-    screen.blit(reflector, reflector_pos)
-    screen.blit(gameboard, gameboard_pos)
-    screen.blit(start_button, start_button_pos)
-    screen.blit(quit_button, quit_button_pos)
-    screen.blit(reset_gameboard_button, reset_gameboard_button_pos)
-    screen.blit(reset_neutrons_button, reset_neutrons_button_pos)
-    screen.blit(restart_tutorial_button, restart_tutorial_button_pos)
-    screen.blit(poison_meter, poison_meter_pos)
-    screen.blit(coolant_flow_meter, coolant_flow_meter_pos)
-    screen.blit(poison_meter_label, poison_meter_label_pos)
-    screen.blit(coolant_flow_meter_label, coolant_flow_meter_label_pos)
-    screen.blit(poison_up, poison_up_pos)
-    screen.blit(coolant_flow_up, coolant_flow_up_pos)
-    screen.blit(poison_down, poison_down_pos)
-    screen.blit(coolant_flow_down, coolant_flow_down_pos)
 
-    # flip() the display to put your work on screen
-    pg.display.flip()
+def exit_button_only():
+    global running
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            click_pos = pg.Vector2(event.pos[0], event.pos[1])
+            if touching_rectangle(quit_button, quit_button_pos, click_pos):
+                pg.quit()
+
+
+tutorial_messages = [
+    "Welcome to Fission Reactor Modeling!",
+    "Ready to find out what happens in a nuclear reactor?",
+    "Let's take a look at the game board.",
+    "As you can see, the gameboard is labeled matrix.",
+    "In a reactor, the matrix holds everything in place.",
+    "Surrounding the matrix, you can see there is a reflector.",
+    "Neutrons fly around inside a reactor.",
+    "When they crash into the nucleus of an atom,",
+    "They either stick or bounce.",
+    "The reflector is full of bouncy atoms.",
+    "When a neutron crashes into a reflector atom...",
+    "It bounces back into the reactor!",
+    "Surrounding the reflector, you can see there is shielding.",
+    "When an atom fissions, what comes out?",
+    "Two smaller atoms, two neutrons, a little heat, and a gamma ray!",
+    "Gamma rays can pass through most materials.",
+    "And if they were to get out of the reactor...",
+    "People nearby would be irradiated.",
+    "Shielding keeps gamma rays from escaping.",
+    "Now, what is the matrix holding in place?",
+    "There are four main components:",
+    "Fuel, moderator, poison, and coolant.",
+    "Let's start with the moderator.",
+    "Neutrons from fission are going too fast.",
+    "Even if they got close to a fuel atom,",
+    "They would fly right past!",
+    "Moderator atoms are a little bouncy,",
+    "And they slow down the neutrons.",
+    "Now how about the fuel?",
+    "Most fuel for fission is full of uranium-235 atoms.",
+    "Uranium-235 atoms are stable,",
+    "But uranium-236 atoms like to fission.",
+    "When a neutron crashes into a uranium-235 atom,",
+    "It sticks! It gets absorbed into the nucleus",
+    "And the atom becomes uranium-236.",
+    "You know what that means... Fission!",
+    "One neutron gets absorbed, but two more are released!",
+    "Now let's take a look at the coolant.",
+    "Each fission releases a little heat.",
+    "Power plants can turn that heat into electricity,",
+    "But first it needs to get out of the reactor.",
+    "Coolant flows in and out of the reactor.",
+    "It carries the heat away, so the fuel doesn't overheat.",
+    "You want to place the coolant near the fuel",
+    "So the heat gets removed quickly.",
+    "You also want to make sure the coolant is big enough.",
+    "Because it can only remove heat if it is still cold.",
+    "On the right, you can find the coolant flow meter.",
+    "To save money, the coolant slows down if it's not used.",
+    "That will mean it can't remove as much heat.",
+    "So you might need to turn it up when things start to get hot!",
+    "Let's see this coolant in action.",
+    "Did you see the heat go from the fuel into the coolant?",
+    "Finally, let's take a look at the poison.",
+    "In nuclear reactors, poison means neutron poison.",
+    "Poison atoms are very sticky and very stable.",
+    "So if a neutron crashes into them, it's absorbed.",
+    "We want some of the neutrons to be absorbed in the poison.",
+    "If all the neutrons are absorbed by the fuel, ",
+    "More and more neutrons will be released.",
+    "Pretty soon, we lose control of them.",
+    "Too many neutrons means too many fissions,",
+    "The reactor will either blow up or melt down.",
+    "(But these days all reactors are designed to never blow up.)",
+    "We put a lot of poison in reactors.",
+    "But we leave a way to take it out a little at time.",
+    "That way, we can control how fast the neutrons multiply.",
+    "If the number of neutrons isn't changing, we call that criticality.",
+    "We like criticality. It means everything is under control.",
+    "At the top of the screen, you can see the criticality measure.",
+    "During the game, you want that number to be about 1.",
+    "If the number of neutrons is growing, we call that supercriticality.",
+    "If the criticality meter at the top of the screen gets above 1.2,",
+    "You lose control of the neutrons, and it's game over.",
+    "So you need to make sure to put a lot of poison in,",
+    "But turn the insertion down to 0% (bottom right).",
+    "Then insert the poison a little at a time to keep criticality at 1.",
+    "For your convenience, poison insertion will start at 10%",
+    "There are two more ways the game ends.",
+    "Your fuel could overheat if there isn't enough coolant flow.",
+    "Or you could run out of neutrons.",
+    "Just reset neutrons to tweak your reactor design,",
+    "Or reset gameboard (top right) to clear everything.",
+    "You're almost ready to play!",
+    "Just click and hold a button until your cursor is the size you want.",
+    "Then click on the gameboard to place it!",
+    "When you like your design, turn down the poison...",
+    "And click start!",
+]
+
+
+while running:
+    # poll for events
+    # pg.QUIT event means the user clicked X to close your window
+
+    poison_color = (
+        max(0, 255 - (255 - 165) * poison_effectiveness),
+        max(0, 255 - (255 - 42) * poison_effectiveness),
+        max(0, 255 - (255 - 42) * poison_effectiveness),
+    )
+    while tutorial_step < len(tutorial_messages):
+        tutorial_message = tutorial_messages[tutorial_step]
+        repaint_gameboard(message=tutorial_message)
+        if (
+            tutorial_message == "It bounces back into the reactor!"
+            and len(neutrons) == 0
+        ):
+            tutorial_birth()
+        if (
+            tutorial_message
+            == "Surrounding the reflector, you can see there is shielding."
+        ) and len(neutrons) > 0:
+            death(0)
+
+        if (
+            tutorial_message == "Let's start with the moderator."
+            and len(moderator_spots) == 0
+        ):
+            place_mod()
+        if (
+            tutorial_message == "And they slow down the neutrons."
+            and len(neutrons) == 0
+        ):
+            tutorial_birth()
+        if tutorial_message == "Now how about the fuel?" and len(fuel_spots) == 0:
+            death(0)
+            place_fuel()
+        if (
+            tutorial_message == "You know what that means... Fission!"
+            and len(neutrons) == 0
+        ):
+            tutorial_birth()
+        if tutorial_message == "Now let's take a look at the coolant.":
+            for neutron in neutrons:
+                death(0)
+            coolant_spots.append(
+                {
+                    "position": fist_coolant_pos,
+                    "size": place_here_size / 2,
+                    "at_capacity": 0,
+                }
+            )
+        if (
+            tutorial_message == "Let's see this coolant in action."
+            and len(neutrons) == 0
+        ):
+            fuel_tutorial_step_is_passed = True
+            tutorial_birth()
+        if tutorial_message == "Finally, let's take a look at the poison.":
+            reset_gameboard()
+            poison_spots.append(
+                {"position": first_mod_pos, "size": place_here_size / 2}
+            )
+
+        if tutorial_message == "So if a neutron crashes into them, it's absorbed.":
+            wait_count += 1
+            if wait_count == 5:
+                tutorial_birth()
+                wait_count = 0
+
+        if tutorial_step == len(tutorial_messages):
+            reset_gameboard()
+
+        dt = clock.tick(60) / 1000
+        time_since_last_click += dt
+        if time_since_last_click >= 2:
+            advance_if_clicked()
+        else:
+            exit_button_only()
+
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            running = False
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            click_pos = pg.Vector2(event.pos[0], event.pos[1])
+            if rxn_started == False:
+                if touching_circle(click_pos, fuel_button_pos, fuel_button_size):
+                    cursor_size = 0
+                    fuel_cursor_growing = True
+                if touching_circle(
+                    click_pos, moderator_button_pos, moderator_button_size
+                ):
+                    cursor_size = 0
+                    moderator_cursor_growing = True
+                if touching_circle(click_pos, poison_button_pos, poison_button_size):
+                    cursor_size = 0
+                    poison_cursor_growing = True
+                if touching_circle(click_pos, coolant_button_pos, coolant_button_size):
+                    cursor_size = 0
+                    coolant_cursor_growing = True
+            if (
+                touching_rectangle(start_button, start_button_pos, click_pos)
+                and rxn_started == False
+            ):
+                rxn_started = True
+                for i in range(50):
+                    birth()
+            if touching_rectangle(
+                reset_gameboard_button, reset_gameboard_button_pos, click_pos
+            ):
+                reset_gameboard()
+            if touching_rectangle(
+                reset_neutrons_button, reset_neutrons_button_pos, click_pos
+            ):
+                reset_neutrons()
+
+            if touching_rectangle(
+                restart_tutorial_button, restart_tutorial_button_pos, click_pos
+            ):
+                tutorial_step = 0
+
+            if touching_rectangle(quit_button, quit_button_pos, click_pos):
+                running = False
+            if (
+                touching_rectangle(poison_up, poison_up_pos, click_pos)
+                and poison_effectiveness < 1
+            ):
+                poison_effectiveness += 0.01
+            if (
+                touching_rectangle(poison_down, poison_down_pos, click_pos)
+                and poison_effectiveness > 0.01
+            ):
+                poison_effectiveness -= 0.01
+            if (
+                touching_rectangle(coolant_flow_up, coolant_flow_up_pos, click_pos)
+                and coolant_flow_rate < 1
+            ):
+                coolant_flow_rate += 0.01
+            if (
+                touching_rectangle(coolant_flow_down, coolant_flow_down_pos, click_pos)
+                and coolant_flow_rate > 0.01
+            ):
+                coolant_flow_rate -= 0.01
+
+        elif event.type == pg.MOUSEBUTTONUP:
+            # cursore stop growing
+            if fuel_cursor_growing == True:
+                fuel_cursor_growing = False
+                fuel_to_place = True
+            elif moderator_cursor_growing == True:
+                moderator_cursor_growing = False
+                moderator_to_place = True
+            elif poison_cursor_growing == True:
+                poison_cursor_growing = False
+                poison_to_place = True
+            elif coolant_cursor_growing == True:
+                coolant_cursor_growing = False
+                coolant_to_place = True
+
+            # place spot
+            elif touching_rectangle(gameboard, gameboard_pos, click_pos):
+                if fuel_to_place == True:
+                    place_spot(fuel_spots)
+                elif moderator_to_place == True:
+                    place_spot(moderator_spots)
+                elif poison_to_place == True:
+                    place_spot(poison_spots)
+                elif coolant_to_place == True:
+                    place_coolant()
+
+            # reset cursor
+            else:
+                reset_cursor()
+
+    # grow the cursor
+    if fuel_cursor_growing:
+        grow_cursor("f", "black")
+
+    if moderator_cursor_growing:
+        grow_cursor("m", "purple")
+
+    if poison_cursor_growing:
+        grow_cursor("p", poison_color)
+    if coolant_cursor_growing:
+        grow_cursor("c", coolant_color)
+    # fill the screen with a color to wipe away anything from last frame
+
+    repaint_gameboard()
 
     # limits FPS to 60
     # dt is delta time in seconds since last frame, used for framerate-
