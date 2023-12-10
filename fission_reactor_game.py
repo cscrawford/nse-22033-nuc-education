@@ -350,6 +350,9 @@ def reset_neutrons():
     global rxn_started
     global hot_spots
     global tutorial_step
+    global power_level
+    global max_fissions
+    global fission_count
     fission_count = []
     t = 0
     criticality = 0
@@ -361,6 +364,9 @@ def reset_neutrons():
     overheat = False
     rxn_started = False
     tutorial_step = 100
+    power_level = 0
+    max_fissions = 0
+    fission_count = []
 
 
 def place_mod():
@@ -768,6 +774,9 @@ def reset_gameboard():
     global rxn_started
     global hot_spots
     global tutorial_step
+    global power_level
+    global max_fissions
+    global fission_count
     fission_count = []
     t = 0
     criticality = 0
@@ -784,6 +793,9 @@ def reset_gameboard():
     overheat = False
     rxn_started = False
     tutorial_step = 100
+    power_level = 0
+    max_fissions = 0
+    fission_count = []
 
 
 def advance_if_clicked():
