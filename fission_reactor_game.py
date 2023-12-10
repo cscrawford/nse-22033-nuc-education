@@ -58,6 +58,7 @@ max_fissions = 0
 tutorial_step = 100
 wait_count = 0
 time_since_last_click = 0
+power_level = 0
 
 # lists
 neutrons = []
@@ -413,6 +414,7 @@ def neutron_transport():
     global fissions_this_step
     global coolant_flow_rate
     global max_fissions
+    global power_level
 
     i = 0
     fissions_this_step = 0
@@ -503,6 +505,7 @@ def repaint_gameboard(
     global poison_color
     global poison_effectiveness
     global moderator_spots, neutrons
+    global power_level
     screen.fill("yellow")
     gameboard.fill("white")
     shield.fill("gray")
@@ -529,6 +532,12 @@ def repaint_gameboard(
     add_text(
         "operation time:" + str(int(t)) + " seconds",
         pg.Vector2(screen.get_width() - 200, 10),
+        screen,
+        "black",
+    )
+    add_text(
+        "power level:" + str(int(power_level) * 200) + " MeV/second",
+        pg.Vector2(screen.get_width() - 200, 40),
         screen,
         "black",
     )
@@ -1128,7 +1137,7 @@ while running:
     if len(neutron_count) > 50:
         neutron_count.pop(0)
     if len(neutron_count) > 2:
-        if neutron_count[0] > 10:
+        if neutron_count[0] > 20:
             criticality = neutron_count[-1] / neutron_count[0]
             if criticality > 1.2:
                 supercritical = True
